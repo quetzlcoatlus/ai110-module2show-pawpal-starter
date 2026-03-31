@@ -75,6 +75,7 @@ class Owner:
         self.pets.append(pet)
 
     def get_all_tasks(self) -> List[Task]:
+        """Gets tasks from all of the pets associated with owner"""
         tasks: List[Task] = []
         for p in self.pets:
             tasks.extend(p.get_tasks())
@@ -90,7 +91,7 @@ class Scheduler:
     def add_owner(self, owner: Owner) -> None:
         self.owners.append(owner)
 
-    def retrieve_tasks(self, date_: date) -> List[Task]:
+    def retrieve_tasks_for_date(self, date_: date) -> List[Task]:
         """Return all tasks for the given date across all owners/pets."""
         results: List[Task] = []
         for owner in self.owners:
@@ -99,16 +100,16 @@ class Scheduler:
                     results.append(t)
         return results
 
-    def organize_tasks(self, date_: Optional[date] = None) -> List[Task]:
+    def organize_tasks_for_date(self, date_: Optional[date] = None) -> List[Task]:
         """Return tasks for date sorted by time.
 
         If date_ is None, uses today's date.
         """
         target = date_ or date.today()
-        tasks = self.retrieve_tasks(target)
+        tasks = self.retrieve_tasks_for_date(target)
         return sorted(tasks, key=lambda t: t.scheduled_time)
 
-    def detect_conflicts(self) -> List[Tuple[Pet, Task, Task]]:
+    def detect_task_conflicts(self) -> List[Tuple[Pet, Task, Task]]:
         """Detect overlapping tasks per pet.
 
         Returns a list of tuples (pet, task1, task2) that conflict.

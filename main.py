@@ -16,7 +16,7 @@ test_owner = Owner("Test", pets=[test_pet1, test_pet2])
 
 test_scheduler = Scheduler(owners=[test_owner])
 
-organized_tasks = test_scheduler.organize_tasks()
+organized_tasks = test_scheduler.organize_tasks_for_date()
 print("Today's Schedule")
 for task in organized_tasks:
     print(f"  - {task.description} at {task.scheduled_time} (Duration: {task.duration})")
