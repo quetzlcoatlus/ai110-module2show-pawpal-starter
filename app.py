@@ -1,5 +1,7 @@
 import streamlit as st
 
+from pawpal_system import Task, Pet, Owner
+
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
 st.title("🐾 PawPal+")
@@ -42,6 +44,7 @@ st.subheader("Quick Demo Inputs (UI only)")
 owner_name = st.text_input("Owner name", value="Jordan")
 pet_name = st.text_input("Pet name", value="Mochi")
 species = st.selectbox("Species", ["dog", "cat", "other"])
+age = st.number_input("Age", min_value=0, value = 0)
 
 st.markdown("### Tasks")
 st.caption("Add a few tasks. In your final version, these should feed into your scheduler.")
@@ -49,6 +52,7 @@ st.caption("Add a few tasks. In your final version, these should feed into your 
 if "tasks" not in st.session_state:
     st.session_state.tasks = []
 
+# Row 1
 col1, col2, col3 = st.columns(3)
 with col1:
     task_title = st.text_input("Task title", value="Morning walk")
@@ -57,10 +61,35 @@ with col2:
 with col3:
     priority = st.selectbox("Priority", ["low", "medium", "high"], index=2)
 
+# Row 2
+col4, col5, col6 = st.columns(3)
+with col4:
+    task_date = st.date_input("Date", value="today")
+with col5:
+    task_scheduled_time = st.time_input("Time", value="now")
+with col6:
+    task_frequency = st.selectbox("Frequency", ["once", "daily", "weekly"], index=0)
+
 if st.button("Add task"):
-    st.session_state.tasks.append(
-        {"title": task_title, "duration_minutes": int(duration), "priority": priority}
-    )
+    # Check if the pet and owner exists
+    # If they do, add the task to the pet with the specified name
+    # Otherwise, create both objects and add the task to the new objects
+    if "owner" not in st.session_state:
+        st.session_state.owner = Owner(owner_name)
+
+    if "pet" not in st.session_state:
+        st.session_state.current_pet = Pet(pet_name, species, age)
+
+    st.session_state.current_pet.add_task(Task(
+        task_title,
+        task_date,
+        task_scheduled_time,
+        task_frequency,
+        int(duration),
+        priority
+    ))
+
+    st.session_state.tasks = st.session_state.owner.get_all_tasks()
 
 if st.session_state.tasks:
     st.write("Current tasks:")
