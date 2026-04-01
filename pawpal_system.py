@@ -131,58 +131,51 @@ class Scheduler:
         return results
 
     def detect_task_conflicts(self) -> List[Tuple[Pet, Task, Task]]:
-        """Detect overlapping tasks per pet.
+        """Detect overlapping tasks per pet (simpler, faster).
 
-        Returns a list of conflicts.
-        - conflicts: list of tuples (pet, task1, task2) that conflict.
-
-        Lightweight rules:
-        - If both tasks have durations, use datetime overlap.
-        - If either task lacks duration, treat same scheduled_time or within 15 minutes as a conflict.
-        - Don't raise on unexpected errors; collect a warning and continue.
+        Strategy:
+        - For each pet build (task, start, end) where end = start + duration if set,
+          otherwise end = start + BUFFER (treat as a point with buffer).
+        - Sort by start and scan forward, comparing only tasks whose start <= current end.
+        - Print a warning for each detected conflict and return the list of conflicts.
         """
         conflicts: List[Tuple[Pet, Task, Task]] = []
-        warnings: List[str] = []
-        BUFFER_MINUTES = 15
-
-        def _times_overlap(a: Task, b: Task) -> bool:
-            sa = a.get_start_datetime()
-            sb = b.get_start_datetime()
-            ea = a.get_end_datetime()
-            eb = b.get_end_datetime()
-
-            # both have durations -> full datetime overlap check
-            if ea is not None and eb is not None:
-                latest_start = max(sa, sb)
-                earliest_end = min(ea, eb)
-                return latest_start < earliest_end
-
-            # if either has no duration -> treat as point-in-time with buffer
-            diff = abs((sa - sb).total_seconds()) / 60.0
-            return diff <= BUFFER_MINUTES
+        BUFFER = timedelta(minutes=15)
 
         for owner in self.owners:
             for pet in owner.pets:
-                tasks = pet.get_tasks()
-                n = len(tasks)
-                for i in range(n):
-                    for j in range(i + 1, n):
-                        t1 = tasks[i]
-                        t2 = tasks[j]
-                        # quick date check: if both dates differ by more than 1 day and
-                        # neither has duration crossing days, skip (keeps it lightweight)
-                        date_diff = abs((t1.date - t2.date).days)
-                        if date_diff > 1 and t1.duration is None and t2.duration is None:
-                            continue
+                entries: List[Tuple[Task, datetime, datetime]] = []
+                for t in pet.get_tasks():
+                    try:
+                        s = t.get_start_datetime()
+                        e = t.get_end_datetime() if t.get_end_datetime() is not None else s + BUFFER
+                        entries.append((t, s, e))
+                    except Exception as exc:
+                        print(f"Warning: failed to evaluate times for task '{t.description}' of pet '{pet.name}': {exc}")
+                        continue
 
-                        if _times_overlap(t1, t2):
-                            conflicts.append((pet, t1, t2))
+                entries.sort(key=lambda item: item[1])  # sort by start time
+
+                n = len(entries)
+                for i in range(n):
+                    ti, si, ei = entries[i]
+                    j = i + 1
+                    # compare with subsequent tasks while their start is <= current end
+                    while j < n and entries[j][1] <= ei:
+                        tj, sj, ej = entries[j]
+                        # if both have durations, require true overlap; otherwise buffer logic already applied
+                        if (ti.duration is not None and tj.duration is not None and max(si, sj) < min(ei, ej)) or \
+                           not (ti.duration is not None and tj.duration is not None):
+                            conflicts.append((pet, ti, tj))
                             print(
                                 f"Warning: conflict detected for pet '{pet.name}' - "
-                                f"'{t1.description}' ({t1.date} {t1.scheduled_time}) "
-                                f"conflicts with '{t2.description}' ({t2.date} {t2.scheduled_time})"
+                                f"'{ti.description}' ({ti.date} {ti.scheduled_time}) "
+                                f"conflicts with '{tj.description}' ({tj.date} {tj.scheduled_time})"
                             )
-                            # continue scanning other pairs
+                        # extend current window to handle chains of overlapping tasks
+                        ei = max(ei, ej)
+                        j += 1
+
         return conflicts
 
     def assign_task_to_pet(self, task: Task, pet: Pet) -> None:

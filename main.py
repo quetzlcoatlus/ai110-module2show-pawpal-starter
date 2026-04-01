@@ -9,7 +9,7 @@ test_task1 = Task("Walk", date(2026,3,23), time(12), duration=timedelta(hours=1)
 test_task2 = Task("Meds", date(2026,3,23), time(), "monthly")
 test_task3 = Task("Bath", date(2026,3,23), time(10), duration=timedelta(hours=1))
 
-test_conflict_task1 = Task("Walk", date(2026,3,23), time(12), duration=timedelta(hours=1))
+test_conflict_task1 = Task("Walk", date(2026,3,23), time(13))
 
 test_pet1 = Pet("Sparky", tasks=[test_task1, test_task3, test_conflict_task1])
 test_pet2 = Pet("Charlie", tasks=[test_task2])

@@ -41,3 +41,7 @@ pip install -r requirements.txt
 5. Add tests to verify key behaviors.
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
+
+### Smarter Scheduling
+
+Implemented sorting by time of tasks. Also filtering by completion status and pet name. This way, the schedule is more efficient and better aligned with the owner's needs.

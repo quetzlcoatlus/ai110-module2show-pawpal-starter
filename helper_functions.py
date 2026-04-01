@@ -1,4 +1,4 @@
-from pawpal_system import Pet
+from pawpal_system import Pet, Task
 import pandas as pd
 
 def no_pet_duplicates(pet_to_add: Pet, pets_to_check: list[Pet]) -> bool:
@@ -17,3 +17,7 @@ def create_pet_dataframe(pets: list[Pet]) -> pd.DataFrame:
     df = pd.DataFrame(pets)
     df = df.drop(columns=["tasks"])
     return df
+
+def create_task_dataframe(tasks: list[Task]) -> pd.DataFrame:
+    df = pd.DataFrame(tasks)
+    

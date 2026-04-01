@@ -129,10 +129,15 @@ Methods
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
 - How did you decide which constraints mattered most?
 
+Scheduler considers time, priority, and 
+
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
 - Why is that tradeoff reasonable for this scenario?
+
+The scheduler registers a conflict if the tasks have a scheduled time within 15 minutes or they're within one or the other's durations.
+This is reasonable because tasks with no duration are likely pretty quick. So if they're 15 minutes before or after one another they're unlikely to be a significant inconvenience. If they're within the duration of each o ther then obviously there's a conflict.
 
 ---
 
