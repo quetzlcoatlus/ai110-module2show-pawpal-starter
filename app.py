@@ -41,16 +41,46 @@ At minimum, your system should:
 st.divider()
 
 st.subheader("Quick Demo Inputs (UI only)")
-owner_name = st.text_input("Owner name", value="Jordan")
-pet_name = st.text_input("Pet name", value="Mochi")
-species = st.selectbox("Species", ["dog", "cat", "other"])
-age = st.number_input("Age", min_value=0, value = 0)
+
+# Block handles adding a new owner
+if "owner" not in st.session_state:
+    st.session_state.owner = None
+if owner_name := st.text_input("Owner name", value="Jordan"):
+    if st.session_state.owner == None or owner_name != st.session_state.owner.name:
+        st.session_state.owner = Owner(owner_name)
+        st.session_state.pet = None
+if st.session_state.owner:
+    st.text(f"Current owner: {st.session_state.owner.name}")
+else:
+    st.info("No owner yet. Add one above.")
+
+# Block handles adding a new pet
+if "pet" not in st.session_state:
+    st.session_state.pet = None
+
+col7, col8, col9 = st.columns(3)
+with col7:
+    pet_name = st.text_input("Pet name", value="Mochi")
+with col8:
+    species = st.selectbox("Species", ["dog", "cat", "other"])
+with col9:
+    age = st.number_input("Age", min_value=0, value = 0)
+if st.button("Add Pet"):
+    # If no pet with matching details exists, create one
+    if st.session_state.owner == None:
+        st.info("No owner selected yet to associate with pet. Add one above.")
+    else:
+        if st.session_state.pet == None or pet_name != st.session_state.pet.name or species != st.session_state.pet.species or age != st.session_state.pet.age:
+            st.session_state.pet = Pet(pet_name, species, age)
+            st.session_state.owner.add_pet(st.session_state.pet)
+if st.session_state.pet:
+    st.text(f"Current pet: {st.session_state.pet.name}, the {st.session_state.pet.age} year old {st.session_state.pet.species}.")
+    st.text(f"Owner's pets: {st.session_state.owner.pets}")
+else:
+    st.info("No pet selected yet. Add one above.")
 
 st.markdown("### Tasks")
 st.caption("Add a few tasks. In your final version, these should feed into your scheduler.")
-
-if "tasks" not in st.session_state:
-    st.session_state.tasks = []
 
 # Row 1
 col1, col2, col3 = st.columns(3)
@@ -70,17 +100,13 @@ with col5:
 with col6:
     task_frequency = st.selectbox("Frequency", ["once", "daily", "weekly"], index=0)
 
+if "tasks" not in st.session_state:
+    st.session_state.tasks = []
 if st.button("Add task"):
     # Check if the pet and owner exists
     # If they do, add the task to the pet with the specified name
     # Otherwise, create both objects and add the task to the new objects
-    if "owner" not in st.session_state:
-        st.session_state.owner = Owner(owner_name)
-
-    if "pet" not in st.session_state:
-        st.session_state.current_pet = Pet(pet_name, species, age)
-
-    st.session_state.current_pet.add_task(Task(
+    st.session_state.pet.add_task(Task(
         task_title,
         task_date,
         task_scheduled_time,
@@ -88,7 +114,6 @@ if st.button("Add task"):
         int(duration),
         priority
     ))
-
     st.session_state.tasks = st.session_state.owner.get_all_tasks()
 
 if st.session_state.tasks:
