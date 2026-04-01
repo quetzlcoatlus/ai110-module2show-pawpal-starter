@@ -162,6 +162,12 @@ This is reasonable because tasks with no duration are likely pretty quick. So if
 - What behaviors did you test?
 - Why were these tests important?
 
+1. Adding a pet to an owner and verifying that the pet is in the owner's list of pets. This is important because it verifies that the add_pet method works correctly and that the relationship between owner and pet is established.
+2. Adding a task to a pet and verifying that the task is in the pet's list of tasks. This is important because it verifies that the add_task method works correctly and that the relationship between pet and task is established.
+3. Retrieving tasks for a specific date and verifying that the correct tasks are returned. This is important because it verifies that the retrieve_tasks method works correctly and that the scheduler can aggregate tasks across owners and pets based on date.
+4. Detecting conflicts between tasks and verifying that the correct conflicts are identified. This is important because it verifies that the detect_conflicts method works correctly and that the scheduler can identify scheduling issues.
+5. Marking a task as complete and verifying that the task's completed attribute is updated. Also that the task is rescheduled if it has a frequency. This is important because it verifies that the mark_complete method works correctly and that task completion status can be tracked.
+
 **b. Confidence**
 
 - How confident are you that your scheduler works correctly?

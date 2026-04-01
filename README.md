@@ -45,3 +45,9 @@ pip install -r requirements.txt
 ### Smarter Scheduling
 
 Implemented sorting by time of tasks. Also filtering by completion status and pet name. This way, the schedule is more efficient and better aligned with the owner's needs.
+
+### Testing PawPal+
+
+`python -m pytest` to run tests in `test_pawpal.py`. Tests cover adding pets and tasks, retrieving tasks by date, detecting conflicts, and marking tasks as complete.
+
+Confidence level 3/5. The core functionality is tested, but there may be edge cases that haven't been covered yet.

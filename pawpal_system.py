@@ -91,6 +91,9 @@ class Scheduler:
     def add_owner(self, owner: Owner) -> None:
         self.owners.append(owner)
 
+    def add_pet_to_owner(self, pet: Pet, owner: Owner) -> None:
+        owner.add_pet(pet)
+
     def retrieve_tasks_for_date(self, date_: date) -> List[Task]:
         """Return all tasks for the given date across all owners/pets."""
         results: List[Task] = []
