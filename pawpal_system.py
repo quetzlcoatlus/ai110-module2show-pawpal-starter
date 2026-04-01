@@ -109,6 +109,27 @@ class Scheduler:
         tasks = self.retrieve_tasks_for_date(target)
         return sorted(tasks, key=lambda t: t.scheduled_time)
 
+    def filter_tasks(self, *, completed: Optional[bool] = None, pet_name: Optional[str] = None) -> List[Task]:
+        """Return tasks filtered by completion status and/or pet name and optional date.
+
+        Args:
+            completed: if set, only return tasks whose `completed` matches this value.
+            pet_name: if set, only return tasks for pets whose name matches (case-insensitive).
+
+        The filter combines conditions (AND). If no filters provided, returns all tasks across owners.
+        """
+        results: List[Task] = []
+        for owner in self.owners:
+            for pet in owner.pets:
+                if pet_name is not None and pet.name.lower() != pet_name.lower():
+                    continue
+                for t in pet.get_tasks():
+                    if completed is not None and t.completed != completed:
+                        continue
+                    results.append(t)
+
+        return results
+
     def detect_task_conflicts(self) -> List[Tuple[Pet, Task, Task]]:
         """Detect overlapping tasks per pet.
 
