@@ -6,7 +6,7 @@ from pawpal_system import Task, Pet, Owner, Scheduler
 from datetime import date, time, timedelta
 
 test_task1 = Task("Walk", date(2026,3,23), time(12), duration=timedelta(hours=1))
-test_task2 = Task("Meds", date(2026,3,23), time(), "monthly")
+test_task2 = Task("Meds", date(2026,3,23), time(), "weekly")
 test_task3 = Task("Bath", date(2026,3,23), time(10), duration=timedelta(hours=1))
 
 test_conflict_task1 = Task("Walk", date(2026,3,23), time(13))
@@ -23,6 +23,12 @@ sorted_tasks = test_scheduler.organize_tasks_for_date(date(2026,3,23))
 conflicts = test_scheduler.detect_task_conflicts()
 
 print("Today's Schedule")
+for task in sorted_tasks:
+    print(f"  - {task.description} at {task.scheduled_time} (Duration: {task.duration})")
+
+test_scheduler.mark_task_complete(test_task2)
+
+sorted_tasks = test_scheduler.organize_tasks_for_date(date(2026,3,30))
 for task in sorted_tasks:
     print(f"  - {task.description} at {task.scheduled_time} (Duration: {task.duration})")
 
