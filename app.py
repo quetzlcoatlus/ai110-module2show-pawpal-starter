@@ -1,6 +1,7 @@
 import streamlit as st
 
 from pawpal_system import Task, Pet, Owner
+from helper_functions import no_pet_duplicates, get_first_pet_duplicate, create_pet_dataframe
 
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
@@ -55,9 +56,6 @@ else:
     st.info("No owner yet. Add one above.")
 
 # Block handles adding a new pet
-if "pet" not in st.session_state:
-    st.session_state.pet = None
-
 col7, col8, col9 = st.columns(3)
 with col7:
     pet_name = st.text_input("Pet name", value="Mochi")
@@ -65,17 +63,24 @@ with col8:
     species = st.selectbox("Species", ["dog", "cat", "other"])
 with col9:
     age = st.number_input("Age", min_value=0, value = 0)
+
+if "pet" not in st.session_state:
+    st.session_state.pet = None
 if st.button("Add Pet"):
     # If no pet with matching details exists, create one
     if st.session_state.owner == None:
         st.info("No owner selected yet to associate with pet. Add one above.")
     else:
-        if st.session_state.pet == None or pet_name != st.session_state.pet.name or species != st.session_state.pet.species or age != st.session_state.pet.age:
-            st.session_state.pet = Pet(pet_name, species, age)
-            st.session_state.owner.add_pet(st.session_state.pet)
+        # Check if values match for any pet associated with the owner
+        pet_to_add = Pet(pet_name, species, age)
+        if no_pet_duplicates(pet_to_add, st.session_state.owner.pets):
+            st.session_state.pet = pet_to_add
+            st.session_state.owner.add_pet(pet_to_add)
+        else:
+            st.session_state.pet = get_first_pet_duplicate(pet_to_add, st.session_state.owner.pets)
 if st.session_state.pet:
     st.text(f"Current pet: {st.session_state.pet.name}, the {st.session_state.pet.age} year old {st.session_state.pet.species}.")
-    st.text(f"Owner's pets: {st.session_state.owner.pets}")
+    st.table(create_pet_dataframe(st.session_state.owner.pets))
 else:
     st.info("No pet selected yet. Add one above.")
 
@@ -100,27 +105,25 @@ with col5:
 with col6:
     task_frequency = st.selectbox("Frequency", ["once", "daily", "weekly"], index=0)
 
-if "tasks" not in st.session_state:
-    st.session_state.tasks = []
 if st.button("Add task"):
-    # Check if the pet and owner exists
-    # If they do, add the task to the pet with the specified name
-    # Otherwise, create both objects and add the task to the new objects
-    st.session_state.pet.add_task(Task(
-        task_title,
-        task_date,
-        task_scheduled_time,
-        task_frequency,
-        int(duration),
-        priority
-    ))
-    st.session_state.tasks = st.session_state.owner.get_all_tasks()
-
-if st.session_state.tasks:
-    st.write("Current tasks:")
-    st.table(st.session_state.tasks)
-else:
-    st.info("No tasks yet. Add one above.")
+    if st.session_state.pet:
+        st.session_state.pet.add_task(Task(
+            task_title,
+            task_date,
+            task_scheduled_time,
+            task_frequency,
+            int(duration),
+            priority
+        ))
+    else:
+        st.info("No pets associated with owner yet. Add one above.")
+if st.session_state.owner:
+    owner_tasks = st.session_state.owner.get_all_tasks()
+    if owner_tasks:
+        st.write("Current tasks:")
+        st.table(st.session_state.owner.get_all_tasks())
+    else:
+        st.info("No tasks yet. Add one above.")
 
 st.divider()
 
