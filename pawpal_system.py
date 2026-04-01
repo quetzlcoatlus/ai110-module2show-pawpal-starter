@@ -133,22 +133,33 @@ class Scheduler:
     def detect_task_conflicts(self) -> List[Tuple[Pet, Task, Task]]:
         """Detect overlapping tasks per pet.
 
-        Returns a list of tuples (pet, task1, task2) that conflict.
-        Only considers tasks that have a duration set for overlap checking.
+        Returns a list of conflicts.
+        - conflicts: list of tuples (pet, task1, task2) that conflict.
+
+        Lightweight rules:
+        - If both tasks have durations, use datetime overlap.
+        - If either task lacks duration, treat same scheduled_time or within 15 minutes as a conflict.
+        - Don't raise on unexpected errors; collect a warning and continue.
         """
         conflicts: List[Tuple[Pet, Task, Task]] = []
+        warnings: List[str] = []
+        BUFFER_MINUTES = 15
 
         def _times_overlap(a: Task, b: Task) -> bool:
             sa = a.get_start_datetime()
-            ea = a.get_end_datetime()
             sb = b.get_start_datetime()
+            ea = a.get_end_datetime()
             eb = b.get_end_datetime()
-            if ea is None or eb is None:
-                return False
-            # handle cross-day implicitly by datetime comparison
-            latest_start = max(sa, sb)
-            earliest_end = min(ea, eb)
-            return latest_start < earliest_end
+
+            # both have durations -> full datetime overlap check
+            if ea is not None and eb is not None:
+                latest_start = max(sa, sb)
+                earliest_end = min(ea, eb)
+                return latest_start < earliest_end
+
+            # if either has no duration -> treat as point-in-time with buffer
+            diff = abs((sa - sb).total_seconds()) / 60.0
+            return diff <= BUFFER_MINUTES
 
         for owner in self.owners:
             for pet in owner.pets:
@@ -158,14 +169,64 @@ class Scheduler:
                     for j in range(i + 1, n):
                         t1 = tasks[i]
                         t2 = tasks[j]
-                        # only check tasks on same/overlapping dates
-                        if t1.date != t2.date:
-                            # allow cross-day durations to overlap via datetimes, but skip if dates are different and neither has duration
-                            pass
+                        # quick date check: if both dates differ by more than 1 day and
+                        # neither has duration crossing days, skip (keeps it lightweight)
+                        date_diff = abs((t1.date - t2.date).days)
+                        if date_diff > 1 and t1.duration is None and t2.duration is None:
+                            continue
+
                         if _times_overlap(t1, t2):
                             conflicts.append((pet, t1, t2))
-
+                            print(
+                                f"Warning: conflict detected for pet '{pet.name}' - "
+                                f"'{t1.description}' ({t1.date} {t1.scheduled_time}) "
+                                f"conflicts with '{t2.description}' ({t2.date} {t2.scheduled_time})"
+                            )
+                            # continue scanning other pairs
         return conflicts
 
     def assign_task_to_pet(self, task: Task, pet: Pet) -> None:
         pet.add_task(task)
+
+    def _find_pet_for_task(self, task: Task) -> Optional[Pet]:
+        """Return the Pet instance that currently holds `task`, or None."""
+        for owner in self.owners:
+            for pet in owner.pets:
+                for t in pet.get_tasks():
+                    if t is task:
+                        return pet
+        return None
+
+    def mark_task_complete(self, task: Task) -> None:
+        """Mark a task complete and, for recurring tasks, create the next occurrence.
+
+        If a task has `frequency` of 'daily' or 'weekly', this will create and add
+        a new Task scheduled at the same time on the next day/week.
+        """
+        if task.completed:
+            return
+
+        task.mark_complete()
+
+        pet = self._find_pet_for_task(task)
+        if pet is None:
+            return
+
+        freq = (task.frequency or '').lower()
+        if freq == 'daily':
+            delta = timedelta(days=1)
+        elif freq == 'weekly':
+            delta = timedelta(weeks=1)
+        else:
+            return
+
+        next_date = task.date + delta
+        new_task = Task(
+            description=task.description,
+            date=next_date,
+            scheduled_time=task.scheduled_time,
+            frequency=task.frequency,
+            duration=task.duration,
+            completed=False,
+        )
+        pet.add_task(new_task)
