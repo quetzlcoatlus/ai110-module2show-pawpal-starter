@@ -1,7 +1,9 @@
 import streamlit as st
+import pandas as pd
 
-from pawpal_system import Task, Pet, Owner
+from pawpal_system import Task, Pet, Owner, Scheduler
 from helper_functions import no_pet_duplicates, get_first_pet_duplicate, create_pet_dataframe
+from datetime import timedelta
 
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
@@ -41,15 +43,20 @@ At minimum, your system should:
 
 st.divider()
 
-st.subheader("Quick Demo Inputs (UI only)")
+st.subheader("Owner and Pets")
+
+if "scheduler" not in st.session_state:
+    st.session_state.scheduler = Scheduler()
 
 # Block handles adding a new owner
 if "owner" not in st.session_state:
     st.session_state.owner = None
 if owner_name := st.text_input("Owner name", value="Jordan"):
     if st.session_state.owner == None or owner_name != st.session_state.owner.name:
-        st.session_state.owner = Owner(owner_name)
-        st.session_state.pet = None
+        owner = Owner(owner_name)
+        st.session_state.owner = owner
+        st.session_state.pet = None # Reset current pet(s) when new owner is added
+        st.session_state.scheduler.add_owner(owner)
 if st.session_state.owner:
     st.text(f"Current owner: {st.session_state.owner.name}")
 else:
@@ -112,7 +119,7 @@ if st.button("Add task"):
             task_date,
             task_scheduled_time,
             task_frequency,
-            int(duration),
+            timedelta(duration),
             priority
         ))
     else:
@@ -131,15 +138,45 @@ st.subheader("Build Schedule")
 st.caption("This button should call your scheduling logic once you implement it.")
 
 if st.button("Generate schedule"):
-    st.warning(
-        "Not implemented yet. Next step: create your scheduling logic (classes/functions) and call it here."
-    )
-    st.markdown(
-        """
-Suggested approach:
-1. Design your UML (draft).
-2. Create class stubs (no logic).
-3. Implement scheduling behavior.
-4. Connect your scheduler here and display results.
-"""
-    )
+    conflicts = st.session_state.scheduler.detect_task_conflicts()
+    if not conflicts:
+        st.success("No conflicts detected in schedule")
+    else:
+        st.warning(f"Schedule conflicts detected")
+        df = pd.DataFrame([
+            {
+                "Pet": pet.name,
+                "First task": t1.description,
+                "Second task": t2.description
+            } for pet, t1, t2 in conflicts
+        ])
+        st.table(df)
+    pet_task_associations = st.session_state.scheduler.organize_tasks_for_date()
+    if pet_task_associations:
+        df = pd.DataFrame([
+            {
+                "Pet": pet.name,
+                "Description": t.description,
+                "Date": t.date,
+                "Time": t.scheduled_time,
+                "Frequency": t.frequency,
+                "Duration": t.duration,
+                "Priority": t.priority,
+            }
+            for pet, t in pet_task_associations
+        ])
+        st.table(df)
+    else:
+        st.warning(f"No tasks to display")
+#     st.warning(
+#         "Not implemented yet. Next step: create your scheduling logic (classes/functions) and call it here."
+#     )
+#     st.markdown(
+#         """
+# Suggested approach:
+# 1. Design your UML (draft).
+# 2. Create class stubs (no logic).
+# 3. Implement scheduling behavior.
+# 4. Connect your scheduler here and display results.
+# """
+#     )

@@ -4,11 +4,16 @@ classDiagram
     %% Task represents a single activity
     class Task {
         +description: str
+        +date: date
         +scheduled_time: time
         +frequency: str
+        +duration: timedelta
+        +priority: str
         +completed: bool
         +mark_complete()
-        +reschedule(new_time)
+        +reschedule(new_date, new_time)
+        +get_start_datetime(): datetime
+        +get_end_datetime(): datetime
     }
 
     %% Pet stores details and its own tasks
@@ -33,16 +38,19 @@ classDiagram
 
     %% Scheduler is the brain that organizes tasks across pets/owners
     class Scheduler {
-        +owners: list<Owner>
-        +retrieve_tasks(date): list<Task>
-        +organize_tasks()
-        +detect_conflicts(): list
+        +owner: Owner
+        +add_owner(owner: Owner)
+        +add_pet_to_owner(pet: Pet)
+        +retrieve_tasks_for_date(date_): list<Task>
+        +filter_tasks(completed, pet_name): list<Tuple<Pet,Task>>
+        +organize_tasks_for_date(date_): list<Tuple<Pet,Task>>
+        +detect_task_conflicts(): list<Tuple<Pet,Task,Task>>
         +assign_task_to_pet(task: Task, pet: Pet)
+        +mark_task_complete(task: Task)
     }
 
     %% Relationships
     Owner "1" o-- "*" Pet : owns
     Pet "1" o-- "*" Task : has
-    Scheduler "1" o-- "*" Owner : manages
-    Scheduler ..> Task : organizes
-
+    Scheduler "1" o-- "0..1" Owner : manages
+    Scheduler ..> Pet : references in return types

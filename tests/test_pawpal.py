@@ -30,14 +30,14 @@ def test_tasks_sorted_chronologically():
 	t3 = Task(description="Groom", date=today, scheduled_time=time(10, 0))
 	s = Scheduler()
 	s.add_owner(o)
-	s.add_pet_to_owner(p, o)
+	s.add_pet_to_owner(p)
 	s.assign_task_to_pet(t1, p)
 	s.assign_task_to_pet(t2, p)
 	s.assign_task_to_pet(t3, p)
 	tasks = s.organize_tasks_for_date()
-	assert tasks[0].description == "Feed"
-	assert tasks[1].description == "Groom"
-	assert tasks[2].description == "Walk"
+	assert tasks[0][1].description == "Feed"
+	assert tasks[1][1].description == "Groom"
+	assert tasks[2][1].description == "Walk"
 
 
 def test_daily_task_recurrence():
@@ -47,7 +47,7 @@ def test_daily_task_recurrence():
 	t = Task(description="Feed", date=date.today(), scheduled_time=time(9, 0), frequency="daily")
 	s = Scheduler()
 	s.add_owner(o)
-	s.add_pet_to_owner(p, o)
+	s.add_pet_to_owner(p)
 	s.assign_task_to_pet(t, p)
 	
 	assert not t.completed
@@ -67,7 +67,7 @@ def test_conflict_detection():
 	t1 = Task(description="Feed", date=date.today(), scheduled_time=time(9, 0))
 	t2 = Task(description="Walk", date=date.today(), scheduled_time=time(9, 0))  # Same time
 	s.add_owner(o)
-	s.add_pet_to_owner(p, o)
+	s.add_pet_to_owner(p)
 	s.assign_task_to_pet(t1, p)
 	s.assign_task_to_pet(t2, p)
 

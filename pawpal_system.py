@@ -22,6 +22,7 @@ class Task:
     scheduled_time: time
     frequency: str = "once"
     duration: Optional[timedelta] = None
+    priority: str = "high"
     completed: bool = False
 
     def mark_complete(self) -> None:
@@ -85,58 +86,67 @@ class Owner:
 class Scheduler:
     """Scheduler is the brain that retrieves, organizes and manages tasks across pets/owners."""
 
-    def __init__(self, owners: Optional[List[Owner]] = None):
-        self.owners: List[Owner] = owners if owners is not None else []
+    def __init__(self, owner: Optional[Owner] = None):
+        # Scheduler now manages a single Owner instance
+        self.owner: Optional[Owner] = owner
 
     def add_owner(self, owner: Owner) -> None:
-        self.owners.append(owner)
+        """Set the Scheduler's Owner (replaces any existing owner)."""
+        self.owner = owner
 
-    def add_pet_to_owner(self, pet: Pet, owner: Owner) -> None:
-        owner.add_pet(pet)
+    def add_pet_to_owner(self, pet: Pet) -> None:
+        """Add a pet to the Scheduler's owner. Raises if no owner set."""
+        if self.owner is None:
+            raise ValueError("Scheduler has no owner set")
+        self.owner.add_pet(pet)
 
     def retrieve_tasks_for_date(self, date_: date) -> List[Task]:
         """Return all tasks for the given date across all owners/pets."""
         results: List[Task] = []
-        for owner in self.owners:
-            for t in owner.get_all_tasks():
-                if t.date == date_:
-                    results.append(t)
+        if self.owner is None:
+            return results
+        for t in self.owner.get_all_tasks():
+            if t.date == date_:
+                results.append(t)
         return results
 
-    def organize_tasks_for_date(self, date_: Optional[date] = None) -> List[Task]:
-        """Return tasks for date sorted by time.
-
-        If date_ is None, uses today's date.
-        """
-        target = date_ or date.today()
-        tasks = self.retrieve_tasks_for_date(target)
-        return sorted(tasks, key=lambda t: t.scheduled_time)
-
-    def filter_tasks(self, *, completed: Optional[bool] = None, pet_name: Optional[str] = None) -> List[Task]:
-        """Return tasks filtered by completion status and/or pet name and optional date.
+    def filter_tasks(self, *, completed: Optional[bool] = None, pet_name: Optional[str] = None) -> List[Tuple[Pet, Task]]:
+        """Return (pet, task) pairs filtered by completion status and/or pet name.
 
         Args:
             completed: if set, only return tasks whose `completed` matches this value.
             pet_name: if set, only return tasks for pets whose name matches (case-insensitive).
 
-        The filter combines conditions (AND). If no filters provided, returns all tasks across owners.
+        The filter combines conditions (AND). If no filters provided, returns all (pet, task) pairs.
         """
-        results: List[Task] = []
-        for owner in self.owners:
-            for pet in owner.pets:
-                if pet_name is not None and pet.name.lower() != pet_name.lower():
+        results: List[Tuple[Pet, Task]] = []
+        if self.owner is None:
+            return results
+
+        for pet in self.owner.pets:
+            if pet_name is not None and pet.name.lower() != pet_name.lower():
+                continue
+            for t in pet.get_tasks():
+                if completed is not None and t.completed != completed:
                     continue
-                for t in pet.get_tasks():
-                    if completed is not None and t.completed != completed:
-                        continue
-                    results.append(t)
+                results.append((pet, t))
 
         return results
 
+    def organize_tasks_for_date(self, date_: Optional[date] = None) -> List[Tuple[Pet, Task]]:
+        """Return (pet, task) pairs for date sorted by scheduled time.
+
+        If date_ is None, uses today's date.
+        """
+        target = date_ or date.today()
+        pairs = [(pet, t) for pet, t in self.filter_tasks() if t.date == target]
+        return sorted(pairs, key=lambda pair: pair[1].scheduled_time)
+
     def detect_task_conflicts(self) -> List[Tuple[Pet, Task, Task]]:
-        """Detect overlapping tasks per pet (simpler, faster).
+        """Detect overlapping tasks per pet using filter_tasks.
 
         Strategy:
+        - Group all (pet, task) pairs by pet via filter_tasks.
         - For each pet build (task, start, end) where end = start + duration if set,
           otherwise end = start + BUFFER (treat as a point with buffer).
         - Sort by start and scan forward, comparing only tasks whose start <= current end.
@@ -145,39 +155,44 @@ class Scheduler:
         conflicts: List[Tuple[Pet, Task, Task]] = []
         BUFFER = timedelta(minutes=15)
 
-        for owner in self.owners:
-            for pet in owner.pets:
-                entries: List[Tuple[Task, datetime, datetime]] = []
-                for t in pet.get_tasks():
-                    try:
-                        s = t.get_start_datetime()
-                        e = t.get_end_datetime() if t.get_end_datetime() is not None else s + BUFFER
-                        entries.append((t, s, e))
-                    except Exception as exc:
-                        print(f"Warning: failed to evaluate times for task '{t.description}' of pet '{pet.name}': {exc}")
-                        continue
+        if self.owner is None:
+            return conflicts
 
-                entries.sort(key=lambda item: item[1])  # sort by start time
+        for pet in self.owner.pets:
+            tasks = [t for _, t in self.filter_tasks(pet_name=pet.name)]
+            if not tasks:
+                continue
+            entries: List[Tuple[Task, datetime, datetime]] = []
+            for t in tasks:
+                try:
+                    s = t.get_start_datetime()
+                    e = t.get_end_datetime() if t.get_end_datetime() is not None else s + BUFFER
+                    entries.append((t, s, e))
+                except Exception as exc:
+                    print(f"Warning: failed to evaluate times for task '{t.description}' of pet '{pet.name}': {exc}")
+                    continue
 
-                n = len(entries)
-                for i in range(n):
-                    ti, si, ei = entries[i]
-                    j = i + 1
-                    # compare with subsequent tasks while their start is <= current end
-                    while j < n and entries[j][1] <= ei:
-                        tj, sj, ej = entries[j]
-                        # if both have durations, require true overlap; otherwise buffer logic already applied
-                        if (ti.duration is not None and tj.duration is not None and max(si, sj) < min(ei, ej)) or \
-                           not (ti.duration is not None and tj.duration is not None):
-                            conflicts.append((pet, ti, tj))
-                            print(
-                                f"Warning: conflict detected for pet '{pet.name}' - "
-                                f"'{ti.description}' ({ti.date} {ti.scheduled_time}) "
-                                f"conflicts with '{tj.description}' ({tj.date} {tj.scheduled_time})"
-                            )
-                        # extend current window to handle chains of overlapping tasks
-                        ei = max(ei, ej)
-                        j += 1
+            entries.sort(key=lambda item: item[1])  # sort by start time
+
+            n = len(entries)
+            for i in range(n):
+                ti, si, ei = entries[i]
+                j = i + 1
+                # compare with subsequent tasks while their start is <= current end
+                while j < n and entries[j][1] <= ei:
+                    tj, sj, ej = entries[j]
+                    # if both have durations, require true overlap; otherwise buffer logic already applied
+                    if (ti.duration is not None and tj.duration is not None and max(si, sj) < min(ei, ej)) or \
+                        not (ti.duration is not None and tj.duration is not None):
+                        conflicts.append((pet, ti, tj))
+                        print(
+                            f"Warning: conflict detected for pet '{pet.name}' - "
+                            f"'{ti.description}' ({ti.date} {ti.scheduled_time}) "
+                            f"conflicts with '{tj.description}' ({tj.date} {tj.scheduled_time})"
+                        )
+                    # extend current window to handle chains of overlapping tasks
+                    ei = max(ei, ej)
+                    j += 1
 
         return conflicts
 
@@ -186,11 +201,12 @@ class Scheduler:
 
     def _find_pet_for_task(self, task: Task) -> Optional[Pet]:
         """Return the Pet instance that currently holds `task`, or None."""
-        for owner in self.owners:
-            for pet in owner.pets:
-                for t in pet.get_tasks():
-                    if t is task:
-                        return pet
+        if self.owner is None:
+            return None
+        for pet in self.owner.pets:
+            for t in pet.get_tasks():
+                if t is task:
+                    return pet
         return None
 
     def mark_task_complete(self, task: Task) -> None:

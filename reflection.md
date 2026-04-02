@@ -129,7 +129,9 @@ Methods
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
 - How did you decide which constraints mattered most?
 
-Scheduler considers time, priority, and 
+Scheduler considers time and pet name. It detects conflicts based on time and pet name. If two tasks are scheduled for the same pet within 15 minutes of each other, or if their durations overlap, then the scheduler flags a conflict.
+
+Constraints that matter most are time and pet name because the same pet can't be in two places at once. So if two tasks are scheduled for the same pet at the same time, that's a conflict. Time is also important because if two tasks are scheduled within 15 minutes of each other, that's likely to be a conflict as well. Not too difficult to see the priority and filter by preferences manually.
 
 **b. Tradeoffs**
 
@@ -148,10 +150,18 @@ This is reasonable because tasks with no duration are likely pretty quick. So if
 - How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
 - What kinds of prompts or questions were most helpful?
 
+I used AI tools for design brainstorming and debugging. I found it helpful to ask the AI to generate a UML diagram based on my initial design ideas, and then to explain the relationships between classes. I also used AI to help me debug issues with my code, by asking it to review specific functions or methods and suggest improvements.
+
+The prompts or questions that were the most helpful were the most specific ones. For example, asking "Can you generate a UML diagram for a pet scheduling system with classes for Pet, Owner, Task, and Scheduler?" was more helpful than a more general prompt like "Can you help me design a pet scheduling system?" The specific prompt helped the AI understand exactly what I was looking for and provided a more targeted response.
+
 **b. Judgment and verification**
 
 - Describe one moment where you did not accept an AI suggestion as-is.
 - How did you evaluate or verify what the AI suggested?
+
+I did not accept the AI's initial suggestion for the test cases because it suggested testing in a way that my design wasn't intended to work.
+
+I evaluated and verified the AI's suggestions by comparing them to my design and the intended functionality of the system. I also considered whether the suggested tests were relevant and would effectively verify the correctness of the system.
 
 ---
 
@@ -173,6 +183,9 @@ This is reasonable because tasks with no duration are likely pretty quick. So if
 - How confident are you that your scheduler works correctly?
 - What edge cases would you test next if you had more time?
 
+I am fairly confident that the core functionality of the scheduler works correctly based on the tests I have implemented. However, there may be edge cases that I haven't considered or tested yet. If I had more time, I would test edge cases such as:
+- Scheduling tasks for multiple pets
+
 ---
 
 ## 5. Reflection
@@ -181,10 +194,18 @@ This is reasonable because tasks with no duration are likely pretty quick. So if
 
 - What part of this project are you most satisfied with?
 
+Probably the overall design and structure of the system. I think I was able to practice each stage of designing an organized system that allows for easy extension and modification in the future. Good practice with object-oriented design and thinking about how to structure a system in a way that allows for flexibility and scalability.
+
 **b. What you would improve**
 
 - If you had another iteration, what would you improve or redesign?
 
+I would improve the test coverage to include more edge cases and ensure that all possible scenarios are tested. I would also consider adding more functionality to the system, such as the ability to handle recurring tasks or to integrate with a calendar API for better scheduling and reminders.
+
+Might be a good opportunity to implement Test Driven Development (TDD) to ensure that the design and implementation are closely aligned with the desired functionality from the start.
+
 **c. Key takeaway**
 
 - What is one important thing you learned about designing systems or working with AI on this project?
+
+One important thing I learned about designing systems is the importance of thinking through the relationships between classes and how they interact with each other. It's crucial to design a system that is organized and modular, so that it's easy to extend and modify in the future. I also learned that when working with AI, it's important to be specific in your prompts and questions to get the most helpful responses.
